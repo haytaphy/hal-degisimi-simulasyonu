@@ -1,0 +1,2281 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hâl Değişimi ve Isı Miktarı Simülasyonu (Q = m · L)</title>
+  <style>
+    /* ==========================================================================
+       CSS DEĞİŞKENLERİ VE TEMA AYARLARI
+       ========================================================================== */
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #1e293b;
+      --bg-card-hover: #273549;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --accent-blue: #38bdf8;
+      --accent-blue-dark: #0284c7;
+      --accent-cyan: #22d3ee;
+      --accent-orange: #f97316;
+      --accent-amber: #f59e0b;
+      --accent-green: #10b981;
+      --accent-purple: #a855f7;
+      --accent-red: #ef4444;
+
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      
+      /* Ölçeklenebilir Boyutlar (Laptop Modu - Varsayılan) */
+      --font-scale: 1;
+      --base-font-size: 15px;
+      --header-title-size: 1.4rem;
+      --card-padding: 16px;
+      --input-height: 40px;
+      --button-padding: 10px 18px;
+      --slider-thumb-size: 20px;
+      --border-radius: 12px;
+      --stat-value-size: 1.6rem;
+      --canvas-height: 440px;
+    }
+
+    /* AKILLI TAHTA MODU (Smart Board Mode) */
+    body.smart-board {
+      --font-scale: 1.25;
+      --base-font-size: 18px;
+      --header-title-size: 1.9rem;
+      --card-padding: 24px;
+      --input-height: 52px;
+      --button-padding: 14px 26px;
+      --slider-thumb-size: 32px;
+      --border-radius: 16px;
+      --stat-value-size: 2.2rem;
+      --canvas-height: 500px;
+      --border-color: #475569;
+    }
+
+    /* GENEL SIFIRLAMA VE TEMEL BİÇİMLENDİRME */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-family);
+      font-size: var(--base-font-size);
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* ÜST BAŞLIK (HEADER) */
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 2px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent-orange), var(--accent-blue));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+      flex-shrink: 0;
+    }
+
+    .header-title-box h1 {
+      font-size: var(--header-title-size);
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .header-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-tag {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-btn {
+      background: var(--bg-secondary);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .header-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    /* ANA İÇERİK IZGARASI (MAIN GRID) */
+    main {
+      flex: 1;
+      padding: 18px 24px;
+      max-width: 1700px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1100px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* KART TASARIMI */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: var(--card-padding);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+
+    .card-title-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* SOL PANEL: DENEY LABORATUVARI VE GÖRSEL CANLANDIRMA */
+    .sim-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: #090d16;
+      border-radius: var(--border-radius);
+      border: 2px solid var(--border-color);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: var(--canvas-height);
+      display: block;
+    }
+
+    /* CANVAS ÜST BİLGİ ŞERİDİ (CANVAS OVERLAY) */
+    .canvas-top-bar {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .canvas-badge {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .status-dot.active {
+      background: var(--accent-orange);
+      box-shadow: 0 0 10px var(--accent-orange);
+      animation: pulse 1.2s infinite alternate;
+    }
+
+    .status-dot.completed {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1.15); }
+    }
+
+    .thermometer-fixed-callout {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid var(--accent-cyan);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(34, 211, 238, 0.25);
+    }
+
+    .thermometer-fixed-callout .lock-icon {
+      color: var(--accent-cyan);
+    }
+
+    /* KONTROL BUTONLARI ŞERİDİ */
+    .controls-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      padding: var(--card-padding);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: var(--font-family);
+      font-size: 1rem;
+      font-weight: 700;
+      padding: var(--button-padding);
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-orange) 0%, #ea580c 100%);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #fb923c 0%, var(--accent-orange) 100%);
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+    }
+
+    .btn-pause {
+      background: linear-gradient(135deg, var(--accent-amber) 0%, #d97706 100%);
+      color: #fff;
+    }
+
+    .btn-pause:hover:not(:disabled) {
+      background: linear-gradient(135deg, #fbbf24 0%, var(--accent-amber) 100%);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-reset {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      background: #475569;
+      color: #fff;
+    }
+
+    /* HIZ AYARLARI */
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-secondary);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .speed-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 0 6px;
+    }
+
+    .speed-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .speed-btn.active {
+      background: var(--accent-blue);
+      color: #0f172a;
+    }
+
+    /* DÖNÜŞÜM İLERLEME ÇUBUĞU */
+    .progress-box {
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 18px;
+      background: #090d16;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8 0%, #f97316 100%);
+      border-radius: 20px;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    }
+
+    /* SAĞ PANEL: KONTROLLER VE FORMÜL ANALİZİ */
+    .panel-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* FORM ELEMANLARI */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .form-val {
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      font-weight: 700;
+      font-size: 1.05rem;
+      background: rgba(34, 211, 238, 0.1);
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(34, 211, 238, 0.25);
+    }
+
+    .select-input {
+      width: 100%;
+      height: var(--input-height);
+      background-color: var(--bg-primary);
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-family);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0 14px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .select-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+
+    /* RANGE SLIDER */
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background: #090d16;
+      outline: none;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: var(--slider-thumb-size);
+      height: var(--slider-thumb-size);
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transition: transform 0.15s, background-color 0.15s;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #7dd3fc;
+    }
+
+    .slider::-moz-range-thumb {
+      width: var(--slider-thumb-size);
+      height: var(--slider-thumb-size);
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+    }
+
+    .slider-scale-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* DOĞRULAMA SENARYOLARI BUTONLARI (TEST CASES) */
+    .test-cases-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .test-cases-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .test-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .test-case-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .test-case-btn:hover {
+      border-color: var(--accent-blue);
+      background: var(--bg-card-hover);
+    }
+
+    .test-case-btn .tc-head {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .test-case-btn .tc-sub {
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    /* DİJİTAL GÖSTERGELER (READOUT METRICS) */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .metric-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-blue);
+    }
+
+    .metric-card.heat::before { background: var(--accent-orange); }
+    .metric-card.temp::before { background: var(--accent-cyan); }
+    .metric-card.mass::before { background: var(--accent-purple); }
+    .metric-card.time::before { background: var(--accent-amber); }
+
+    .metric-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: var(--stat-value-size);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* FORMÜL VE HESAPLAMA KARTI */
+    .formula-card {
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      border: 1.5px solid #334155;
+      border-radius: var(--border-radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .formula-display {
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .formula-math {
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .f-q { color: var(--accent-orange); }
+    .f-m { color: var(--accent-blue); }
+    .f-l { color: var(--accent-purple); }
+    .f-t { color: var(--accent-cyan); }
+
+    .formula-calc {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      border-top: 1px dashed var(--border-color);
+      padding-top: 8px;
+      width: 100%;
+    }
+
+    .formula-calc strong {
+      color: #fff;
+    }
+
+    /* CANLI GRAFİK ALANI (LIVE GRAPH) */
+    .graph-card {
+      grid-column: 1 / -1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: var(--card-padding);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .graph-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .graph-tab-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .graph-tab-btn.active {
+      background: var(--accent-blue);
+      color: #0f172a;
+      border-color: var(--accent-blue);
+    }
+
+    #graphCanvas {
+      width: 100%;
+      height: 220px;
+      background: #090d16;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      display: block;
+    }
+
+    /* BİLİMSEL SONUÇ VE PEDAGOJİK ÇIKARIM BİLGİSİ */
+    .pedagogy-summary {
+      background: rgba(30, 41, 59, 0.7);
+      border-left: 4px solid var(--accent-cyan);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pedagogy-summary strong {
+      color: #fff;
+    }
+
+    /* SABİT SAĞ ALT KÖŞE: GÖRÜNÜM VE MOD GEÇİŞ DÜĞMESİ */
+    .fixed-floating-bar {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 1000;
+    }
+
+    .mode-switch-btn {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #fff;
+      border: 2px solid var(--accent-blue);
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .mode-switch-btn:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.4);
+      border-color: #7dd3fc;
+    }
+
+    .mode-indicator-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      box-shadow: 0 0 8px var(--accent-blue);
+    }
+
+    body.smart-board .mode-indicator-dot {
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    /* BİLGİ MODALI (HELP / INFO MODAL) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius);
+      max-width: 680px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.3rem;
+      color: #fff;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-close-btn:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      line-height: 1.6;
+    }
+
+    .modal-body strong {
+      color: #fff;
+    }
+
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 0.85rem;
+    }
+
+    .modal-table th, .modal-table td {
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .modal-table th {
+      background: var(--bg-secondary);
+      color: var(--accent-cyan);
+    }
+
+    /* TAMAMLAMA BİLDİRİMİ (SUCCESS BANNER) */
+    .success-toast {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+      border: 2px solid #10b981;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .success-toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       ÜST BAŞLIK ALANI (HEADER)
+       ========================================================================== -->
+  <header>
+    <div class="header-left">
+      <div class="header-icon">🔥</div>
+      <div class="header-title-box">
+        <h1>
+          Hâl Değişimi ve Isı Miktarı Simülasyonu
+          <span style="color: var(--accent-orange); font-family: 'Cambria Math', serif; font-size: 1.2rem;">(Q = m · L)</span>
+        </h1>
+        <div class="header-subtitle">
+          <span class="badge-tag">Fizik 9. Sınıf</span>
+          <span class="badge-tag">Kazanım: FİZ.9.4.3</span>
+          <span>Isı, Sıcaklık ve Hâl Değişimi</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="header-btn" id="btnHelp" title="Deney Rehberi ve Formüller">
+        <span>ℹ</span> Rehber & Formül
+      </button>
+      <button class="header-btn" id="btnFullscreen" title="Tam Ekran Modu">
+        <span>⛶</span> Tam Ekran
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       ANA SİMÜLASYON DÜZENİ
+       ========================================================================== -->
+  <main>
+    
+    <!-- SOL BÖLÜM: LABORATUVAR DENEY ALANI -->
+    <section class="sim-pane">
+      <div class="canvas-container">
+        
+        <!-- ÜST BİLGİ ROZETLERİ -->
+        <div class="canvas-top-bar">
+          <div class="canvas-badge" id="statusBadge">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Isıtma Bekleniyor</span>
+          </div>
+
+          <!-- SICAKLIK GÖSTERGESİ (SABİT OLDUĞU VURGULANIR) -->
+          <div class="thermometer-fixed-callout" id="tempCallout">
+            <span class="lock-icon">🔒</span>
+            <span>T = <span id="tempCalloutVal">0</span> °C</span>
+            <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: normal; margin-left: 4px;">(Sabit Sıcaklık)</span>
+          </div>
+        </div>
+
+        <!-- DENEY ÇİZİM ALANI -->
+        <canvas id="simCanvas" width="800" height="440"></canvas>
+
+        <!-- BAŞARI TOAST BİLDİRİMİ -->
+        <div class="success-toast" id="successToast">
+          <span>✅</span>
+          <span>Hâl Değişimi %100 Tamamlandı! (Q = m · L ulaşıldı)</span>
+        </div>
+      </div>
+
+      <!-- KONTROL BUTONLARI VE OYNATMA ŞERİDİ -->
+      <div class="controls-strip">
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnStart">
+            <span>▶</span> Isıtmaya Başla
+          </button>
+          <button class="btn btn-pause" id="btnPause" disabled>
+            <span>⏸</span> Duraklat
+          </button>
+          <button class="btn btn-reset" id="btnReset">
+            <span>↺</span> Sıfırla
+          </button>
+        </div>
+
+        <!-- HIZ AYARI -->
+        <div class="speed-control">
+          <span class="speed-label">Hız:</span>
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="2">2x</button>
+          <button class="speed-btn" data-speed="5">5x</button>
+          <button class="speed-btn" data-speed="10">10x</button>
+        </div>
+      </div>
+
+      <!-- DÖNÜŞÜM İLERLEME ÇUBUĞU -->
+      <div class="progress-box">
+        <div class="progress-info">
+          <span>Hâl Değişimi İlerlemesi (α)</span>
+          <span id="progressPercent" style="color: var(--accent-orange); font-family: var(--font-mono);">%0.0</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <!-- PEDAGOJİK ÇIKARIM BİLGİSİ -->
+      <div class="pedagogy-summary">
+        <div><strong>Bilimsel İlke:</strong> Saf maddelerin hâl değişimi süresince sıcaklığı kesinlikle sabit kalır ($\Delta T = 0$). Verilen ısı ($Q$), sıcaklığı artırmak yerine moleküler bağları kırmak/oluşturmak için kullanılır.</div>
+      </div>
+    </section>
+
+    <!-- SAĞ BÖLÜM: KONTROL PANELİ VE DİJİTAL ÖLÇÜMLER -->
+    <section class="panel-pane">
+
+      <!-- KART 1: PARAMETRELER VE MADDE SEÇİMİ -->
+      <div class="card">
+        <div class="card-title">
+          <span class="card-title-text">⚙️ Deney Parametreleri</span>
+          <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Bağımsız Değişkenler</span>
+        </div>
+
+        <!-- MADDE SEÇİMİ (L DEĞERİ) -->
+        <div class="form-group">
+          <label class="form-label" for="substanceSelect">
+            <span>Madde ve Hâl Değişimi Türü</span>
+            <span class="form-val" id="valL">L = 334 J/g</span>
+          </label>
+          <select id="substanceSelect" class="select-input">
+            <option value="ice" selected>Buz → Su (Erime) | Lf = 334 J/g | T = 0 °C</option>
+            <option value="water">Su → Buhar (Buharlaşma) | Lv = 2260 J/g | T = 100 °C</option>
+            <option value="lead">Kurşun (Erime) | Lf = 23 J/g | T = 327 °C</option>
+            <option value="copper">Bakır (Erime) | Lf = 205 J/g | T = 1085 °C</option>
+          </select>
+        </div>
+
+        <!-- KÜTLE SLIDER (m) -->
+        <div class="form-group slider-container">
+          <div class="form-label">
+            <span>Madde Kütlesi (m)</span>
+            <span class="form-val" id="valMass">100 g</span>
+          </div>
+          <input type="range" id="massSlider" class="slider" min="50" max="500" step="10" value="100">
+          <div class="slider-scale-labels">
+            <span>50 g</span>
+            <span>200 g</span>
+            <span>350 g</span>
+            <span>500 g</span>
+          </div>
+        </div>
+
+        <!-- ISITICI GÜCÜ SLIDER (P) -->
+        <div class="form-group slider-container">
+          <div class="form-label">
+            <span>Isıtıcı Gücü (P)</span>
+            <span class="form-val" id="valPower">500 W</span>
+          </div>
+          <input type="range" id="powerSlider" class="slider" min="100" max="1000" step="100" value="500">
+          <div class="slider-scale-labels">
+            <span>100 W (J/s)</span>
+            <span>500 W</span>
+            <span>1000 W (J/s)</span>
+          </div>
+        </div>
+
+        <!-- HIZLI DOĞRULAMA SENARYOLARI (TEST CASES) -->
+        <div class="test-cases-box">
+          <span class="test-cases-title">🧪 Doğrulama Örnekleri (Hızlı Test)</span>
+          <div class="test-btn-grid">
+            <button class="test-case-btn" data-tc="1">
+              <span class="tc-head">Durum 1: 100g Buz</span>
+              <span class="tc-sub">Q = 33.40 kJ</span>
+            </button>
+            <button class="test-case-btn" data-tc="2">
+              <span class="tc-head">Durum 2: 200g Buz</span>
+              <span class="tc-sub">Q = 66.80 kJ</span>
+            </button>
+            <button class="test-case-btn" data-tc="3">
+              <span class="tc-head">Durum 3: 100g Su</span>
+              <span class="tc-sub">Q = 226.00 kJ</span>
+            </button>
+            <button class="test-case-btn" data-tc="4">
+              <span class="tc-head">Durum 4: 500g Kurşun</span>
+              <span class="tc-sub">Q = 11.50 kJ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KART 2: DİJİTAL ÖLÇÜM GÖSTERGELERİ -->
+      <div class="card">
+        <div class="card-title">
+          <span class="card-title-text">📊 Dijital Ölçüm Cihazları</span>
+          <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Canlı Sonuçlar</span>
+        </div>
+
+        <div class="metrics-grid">
+          <!-- SICAKLIK METRİĞİ -->
+          <div class="metric-card temp">
+            <div class="metric-title">Termometre Sıcaklığı (T)</div>
+            <div class="metric-value" id="dispTemp">0 °C</div>
+            <div class="metric-sub">🔒 Faz boyu SABİT (ΔT = 0)</div>
+          </div>
+
+          <!-- VERİLEN TOPLAM ISI -->
+          <div class="metric-card heat">
+            <div class="metric-title">Aktarılan Isı (Q)</div>
+            <div class="metric-value" id="dispQ">0.00 kJ</div>
+            <div class="metric-sub" id="dispQJoules">0 J</div>
+          </div>
+
+          <!-- DÖNÜŞEN KÜTLE -->
+          <div class="metric-card mass">
+            <div class="metric-title">Dönüşen Kütle (m_dönüşen)</div>
+            <div class="metric-value" id="dispTransMass">0.0 g</div>
+            <div class="metric-sub" id="dispTransPct">%0.0 tamamlandı</div>
+          </div>
+
+          <!-- GEÇEN SÜRE -->
+          <div class="metric-card time">
+            <div class="metric-title">Geçen Isıtma Süresi (t)</div>
+            <div class="metric-value" id="dispTime">0.0 s</div>
+            <div class="metric-sub" id="dispReqTime">Hedef: ~0 s</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KART 3: FORMÜL VE BİLİMSEL İNCELEME -->
+      <div class="formula-card">
+        <div class="card-title" style="border: none; padding-bottom: 0;">
+          <span class="card-title-text">📐 Matematiksel Model</span>
+        </div>
+
+        <div class="formula-display">
+          <div class="formula-math">
+            <span class="f-q">Q</span>
+            <span style="color: #fff;">=</span>
+            <span class="f-m">m</span>
+            <span style="color: #fff;">·</span>
+            <span class="f-l">L</span>
+          </div>
+          <div class="formula-calc" id="formulaCalculation">
+            Q = 100 g · 334 J/g = 33,400 J = <strong>33.40 kJ</strong>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-dim);">
+            Isıtıcı: Q(t) = P · t &nbsp;|&nbsp; Dönüşen: m_dönüşen = Q(t) / L
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ALT BÖLÜM: CANLI GRAFİK (Q - t veya m - t) -->
+    <section class="graph-card">
+      <div class="graph-header">
+        <div>
+          <h3 style="font-size: 1.1rem; color: #fff; font-weight: 700;">📈 Canlı Deney Grafiği</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted);">
+            Zamana bağlı enerji aktarımı (Eğim = Isıtıcı Gücü P = ΔQ/Δt)
+          </p>
+        </div>
+
+        <div class="graph-tabs">
+          <button class="graph-tab-btn active" id="tabGraphQ">Q - t (Isı - Zaman)</button>
+          <button class="graph-tab-btn" id="tabGraphM">m - t (Dönüşüm - Zaman)</button>
+        </div>
+      </div>
+
+      <canvas id="graphCanvas" width="1200" height="220"></canvas>
+    </section>
+
+  </main>
+
+  <!-- ==========================================================================
+       SABİT YÜZEN ÇUBUK: LAPTOP / AKILLI TAHTA MODU SEÇİCİ
+       ========================================================================== -->
+  <div class="fixed-floating-bar">
+    <button class="mode-switch-btn" id="btnToggleMode">
+      <span class="mode-indicator-dot"></span>
+      <span id="modeBtnText">💻 Laptop Modu</span>
+    </button>
+  </div>
+
+  <!-- ==========================================================================
+       YARDIM & FORMÜL BİLGİ PENCERESİ (MODAL)
+       ========================================================================== -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🔬 Hâl Değişimi ve Isı (Q = m · L) Konu Özeti</h2>
+        <button class="modal-close-btn" id="btnCloseHelp">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p>
+          Saf maddeler hâl değiştirirken (erime, donma, buharlaşma, yoğuşma) aldıkları veya verdikleri ısı miktarı
+          <strong>Q = m · L</strong> bağıntısı ile hesaplanır.
+        </p>
+
+        <p>
+          <strong>Önemli Kavramlar:</strong><br>
+          • <strong>Q (Isı):</strong> Aktarılan enerji miktarı (Joule veya kiloJoule).<br>
+          • <strong>m (Kütle):</strong> Hâl değiştiren maddenin kütlesi (gram veya kilogram).<br>
+          • <strong>L (Öz Isı / Gizli Isı):</strong> 1 gram saf maddenin hâl değiştirmesi için gereken ısı (J/g). Maddeler için ayırt edici bir özelliktir.<br>
+          • <strong>T (Sıcaklık):</strong> Hâl değişimi boyunca saf maddelerin sıcaklığı <strong>SABİT KALIR</strong>.
+        </p>
+
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>Madde & Dönüşüm</th>
+              <th>Geçiş Sıcaklığı (T)</th>
+              <th>Gizli Isı (L)</th>
+              <th>Örnek (100 g için Q)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Buz → Su (Erime)</td>
+              <td>0 °C</td>
+              <td>Lf = 334 J/g</td>
+              <td>33.40 kJ</td>
+            </tr>
+            <tr>
+              <td>Su → Buhar (Buharlaşma)</td>
+              <td>100 °C</td>
+              <td>Lv = 2260 J/g</td>
+              <td>226.00 kJ</td>
+            </tr>
+            <tr>
+              <td>Kurşun (Erime)</td>
+              <td>327 °C</td>
+              <td>Lf = 23 J/g</td>
+              <td>2.30 kJ</td>
+            </tr>
+            <tr>
+              <td>Bakır (Erime)</td>
+              <td>1085 °C</td>
+              <td>Lf = 205 J/g</td>
+              <td>20.50 kJ</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="font-size: 0.85rem; color: var(--text-dim);">
+          * Isıtıcının gücü P sabit olduğunda aktarılan ısı <strong>Q(t) = P · t</strong> formülü ile hesaplanır.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VANILLA JAVASCRIPT: TÜM FİZİK MOTORU VE ANİMASYONLAR
+       ========================================================================== -->
+  <script>
+    (function () {
+      "use strict";
+
+      // -------------------------------------------------------------------------
+      // 1. SABİTLER VE MADDE VERİ TABANI
+      // -------------------------------------------------------------------------
+      const SUBSTANCES = {
+        ice: {
+          id: "ice",
+          name: "Buz → Su (Erime)",
+          type: "fusion",
+          fromName: "Buz (Katı)",
+          toName: "Su (Sıvı)",
+          T: 0,
+          L: 334, // J/g
+          colorPhase1: "#93c5fd", // Buz mavisi
+          colorPhase2: "#0284c7", // Su
+          containerType: "beaker"
+        },
+        water: {
+          id: "water",
+          name: "Su → Buhar (Buharlaşma)",
+          type: "vaporization",
+          fromName: "Su (Sıvı)",
+          toName: "Buhar (Gaz)",
+          T: 100,
+          L: 2260, // J/g
+          colorPhase1: "#0284c7", // Su
+          colorPhase2: "#e0f2fe", // Buhar
+          containerType: "beaker"
+        },
+        lead: {
+          id: "lead",
+          name: "Kurşun (Erime)",
+          type: "fusion",
+          fromName: "Kurşun Parçaları (Katı)",
+          toName: "Sıvı Kurşun",
+          T: 327,
+          L: 23, // J/g
+          colorPhase1: "#64748b", // Gri metal
+          colorPhase2: "#94a3b8", // Sıvı kurşun
+          containerType: "crucible"
+        },
+        copper: {
+          id: "copper",
+          name: "Bakır (Erime)",
+          type: "fusion",
+          fromName: "Bakır Blok (Katı)",
+          toName: "Sıvı Bakır",
+          T: 1085,
+          L: 205, // J/g
+          colorPhase1: "#b45309", // Bakır kızılı
+          colorPhase2: "#ea580c", // Akkor sıvı bakır
+          containerType: "crucible"
+        }
+      };
+
+      // -------------------------------------------------------------------------
+      // 2. SİMÜLASYON DURUMU (STATE)
+      // -------------------------------------------------------------------------
+      const state = {
+        substanceKey: "ice",
+        mass: 100,         // g
+        power: 500,        // W (J/s)
+        timeSpeed: 1,      // 1x, 2x, 5x, 10x
+        
+        // Simülasyon çalışma değişkenleri
+        isRunning: false,
+        isCompleted: false,
+        simTime: 0,        // s (simüle edilen geçen saniye)
+        currentQ: 0,       // J
+        
+        // Grafik modu
+        graphMode: "Q",    // "Q" veya "m"
+        history: [],       // [{ t, Q, mTrans }]
+        
+        // Parçacık sistemleri
+        flameParticles: [],
+        steamParticles: [],
+        bubbleParticles: []
+      };
+
+      // -------------------------------------------------------------------------
+      // 3. HESAPLAMA YARDIMCILARI (PHYSICS CORE)
+      // -------------------------------------------------------------------------
+      function getActiveSubstance() {
+        return SUBSTANCES[state.substanceKey];
+      }
+
+      function getRequiredHeatJoules() {
+        const sub = getActiveSubstance();
+        return state.mass * sub.L; // J
+      }
+
+      function getRequiredHeatKJ() {
+        return getRequiredHeatJoules() / 1000; // kJ
+      }
+
+      function getTransformedFraction() {
+        const reqQ = getRequiredHeatJoules();
+        if (reqQ <= 0) return 1.0;
+        return Math.min(1.0, state.currentQ / reqQ);
+      }
+
+      function getTransformedMass() {
+        return getTransformedFraction() * state.mass;
+      }
+
+      function getRemainingMass() {
+        return Math.max(0, state.mass - getTransformedMass());
+      }
+
+      // -------------------------------------------------------------------------
+      // 4. DOM ELEMANLARI
+      // -------------------------------------------------------------------------
+      const dom = {
+        // Kontroller
+        substanceSelect: document.getElementById("substanceSelect"),
+        valL: document.getElementById("valL"),
+        massSlider: document.getElementById("massSlider"),
+        valMass: document.getElementById("valMass"),
+        powerSlider: document.getElementById("powerSlider"),
+        valPower: document.getElementById("valPower"),
+        btnStart: document.getElementById("btnStart"),
+        btnPause: document.getElementById("btnPause"),
+        btnReset: document.getElementById("btnReset"),
+        speedBtns: document.querySelectorAll(".speed-btn"),
+        testBtns: document.querySelectorAll(".test-case-btn"),
+        
+        // Göstergeler
+        statusBadge: document.getElementById("statusBadge"),
+        statusDot: document.getElementById("statusDot"),
+        statusText: document.getElementById("statusText"),
+        tempCalloutVal: document.getElementById("tempCalloutVal"),
+        progressPercent: document.getElementById("progressPercent"),
+        progressBar: document.getElementById("progressBar"),
+        successToast: document.getElementById("successToast"),
+        
+        // Dijital Metrikler
+        dispTemp: document.getElementById("dispTemp"),
+        dispQ: document.getElementById("dispQ"),
+        dispQJoules: document.getElementById("dispQJoules"),
+        dispTransMass: document.getElementById("dispTransMass"),
+        dispTransPct: document.getElementById("dispTransPct"),
+        dispTime: document.getElementById("dispTime"),
+        dispReqTime: document.getElementById("dispReqTime"),
+        formulaCalculation: document.getElementById("formulaCalculation"),
+        
+        // Grafikler & Çizim Alanları
+        simCanvas: document.getElementById("simCanvas"),
+        graphCanvas: document.getElementById("graphCanvas"),
+        tabGraphQ: document.getElementById("tabGraphQ"),
+        tabGraphM: document.getElementById("tabGraphM"),
+        
+        // Mod ve Modal
+        btnToggleMode: document.getElementById("btnToggleMode"),
+        modeBtnText: document.getElementById("modeBtnText"),
+        btnFullscreen: document.getElementById("btnFullscreen"),
+        btnHelp: document.getElementById("btnHelp"),
+        helpModal: document.getElementById("helpModal"),
+        btnCloseHelp: document.getElementById("btnCloseHelp")
+      };
+
+      const simCtx = dom.simCanvas.getContext("2d");
+      const graphCtx = dom.graphCanvas.getContext("2d");
+
+      // -------------------------------------------------------------------------
+      // 5. PARÇACIK SİSTEMLERİ KURULUMU
+      // -------------------------------------------------------------------------
+      function initParticles() {
+        state.flameParticles = [];
+        state.steamParticles = [];
+        state.bubbleParticles = [];
+
+        for (let i = 0; i < 40; i++) {
+          state.flameParticles.push({
+            x: (Math.random() - 0.5) * 60,
+            y: Math.random() * 40,
+            size: Math.random() * 12 + 6,
+            life: Math.random(),
+            speedY: Math.random() * 2 + 1.5,
+            hue: Math.random() * 30 + 15 // sarı-turuncu
+          });
+        }
+
+        for (let i = 0; i < 35; i++) {
+          state.steamParticles.push({
+            x: (Math.random() - 0.5) * 80,
+            y: Math.random() * 120,
+            size: Math.random() * 16 + 8,
+            life: Math.random(),
+            speedY: Math.random() * 1.5 + 0.8,
+            opacity: Math.random() * 0.5 + 0.2
+          });
+        }
+
+        for (let i = 0; i < 20; i++) {
+          state.bubbleParticles.push({
+            x: (Math.random() - 0.5) * 110,
+            y: Math.random() * 60,
+            r: Math.random() * 4 + 2,
+            speedY: Math.random() * 1.5 + 0.5
+          });
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // 6. KULLANICI ARAYÜZÜNÜN GÜNCELLENMESİ
+      // -------------------------------------------------------------------------
+      function updateUI() {
+        const sub = getActiveSubstance();
+        const reqQ = getRequiredHeatJoules();
+        const reqQkJ = reqQ / 1000;
+        const currentQkJ = state.currentQ / 1000;
+        const alpha = getTransformedFraction();
+        const mTrans = getTransformedMass();
+        const totalEstimatedTime = reqQ / state.power;
+
+        // Etiketler & Seçiciler
+        dom.valL.textContent = `L = ${sub.L} J/g`;
+        dom.valMass.textContent = `${state.mass} g`;
+        dom.valPower.textContent = `${state.power} W`;
+        
+        // Sıcaklık (HER ZAMAN SABİT T DEĞERİ)
+        dom.dispTemp.textContent = `${sub.T} °C`;
+        dom.tempCalloutVal.textContent = `${sub.T}`;
+
+        // Aktarılan Isı (Q)
+        dom.dispQ.textContent = `${currentQkJ.toFixed(2)} kJ`;
+        dom.dispQJoules.textContent = `${Math.round(state.currentQ).toLocaleString("tr-TR")} J / ${Math.round(reqQ).toLocaleString("tr-TR")} J`;
+
+        // Kütle Değerleri
+        dom.dispTransMass.textContent = `${mTrans.toFixed(1)} g`;
+        dom.dispTransPct.textContent = `%${(alpha * 100).toFixed(1)} dönüşen (Kalan: ${(state.mass - mTrans).toFixed(1)} g)`;
+
+        // Süre
+        dom.dispTime.textContent = `${state.simTime.toFixed(1)} s`;
+        dom.dispReqTime.textContent = `Toplam Gerekli: ~${totalEstimatedTime.toFixed(1)} s`;
+
+        // İlerleme Çubuğu
+        const pct = (alpha * 100).toFixed(1);
+        dom.progressPercent.textContent = `%${pct}`;
+        dom.progressBar.style.width = `${pct}%`;
+
+        // Matematiksel Formül Çözümü Metni
+        dom.formulaCalculation.innerHTML = `Q = ${state.mass} g · ${sub.L} J/g = ${reqQ.toLocaleString("tr-TR")} J = <strong>${reqQkJ.toFixed(2)} kJ</strong>`;
+
+        // Buton Durumları
+        if (state.isCompleted) {
+          dom.btnStart.disabled = true;
+          dom.btnPause.disabled = true;
+          dom.statusDot.className = "status-dot completed";
+          dom.statusText.textContent = "Hâl Değişimi Tamamlandı";
+          dom.successToast.classList.add("show");
+        } else if (state.isRunning) {
+          dom.btnStart.disabled = true;
+          dom.btnPause.disabled = false;
+          dom.btnPause.innerHTML = "<span>⏸</span> Duraklat";
+          dom.statusDot.className = "status-dot active";
+          dom.statusText.textContent = "Isıtılıyor (Enerji Aktarılıyor...)";
+          dom.successToast.classList.remove("show");
+        } else if (state.simTime > 0) {
+          dom.btnStart.disabled = false;
+          dom.btnStart.innerHTML = "<span>▶</span> Devam Et";
+          dom.btnPause.disabled = true;
+          dom.statusDot.className = "status-dot";
+          dom.statusText.textContent = "Duraklatıldı";
+          dom.successToast.classList.remove("show");
+        } else {
+          dom.btnStart.disabled = false;
+          dom.btnStart.innerHTML = "<span>▶</span> Isıtmaya Başla";
+          dom.btnPause.disabled = true;
+          dom.statusDot.className = "status-dot";
+          dom.statusText.textContent = "Isıtma Bekleniyor";
+          dom.successToast.classList.remove("show");
+        }
+
+        // Girişleri çalıştırma esnasında kilitleme (pedagojik netlik için)
+        dom.substanceSelect.disabled = state.isRunning;
+        dom.massSlider.disabled = state.isRunning;
+      }
+
+      // -------------------------------------------------------------------------
+      // 7. SİMÜLASYON SIFIRLAMA VE YENİDEN BAŞLATMA
+      // -------------------------------------------------------------------------
+      function resetSimulation() {
+        state.isRunning = false;
+        state.isCompleted = false;
+        state.simTime = 0;
+        state.currentQ = 0;
+        state.history = [{ t: 0, Q: 0, mTrans: 0 }];
+        initParticles();
+        updateUI();
+        drawSimCanvas();
+        drawGraphCanvas();
+      }
+
+      function startSimulation() {
+        if (state.isCompleted) return;
+        state.isRunning = true;
+        updateUI();
+      }
+
+      function pauseSimulation() {
+        state.isRunning = false;
+        updateUI();
+      }
+
+      // -------------------------------------------------------------------------
+      // 8. DOĞRULAMA SENARYOLARI (TEST CASES)
+      // -------------------------------------------------------------------------
+      function loadTestCase(tcNum) {
+        pauseSimulation();
+        switch (tcNum) {
+          case "1": // 100g Buz -> 33.40 kJ
+            state.substanceKey = "ice";
+            state.mass = 100;
+            state.power = 500;
+            break;
+          case "2": // 200g Buz -> 66.80 kJ
+            state.substanceKey = "ice";
+            state.mass = 200;
+            state.power = 500;
+            break;
+          case "3": // 100g Su -> 226.00 kJ
+            state.substanceKey = "water";
+            state.mass = 100;
+            state.power = 1000;
+            break;
+          case "4": // 500g Kurşun -> 11.50 kJ
+            state.substanceKey = "lead";
+            state.mass = 500;
+            state.power = 500;
+            break;
+        }
+
+        dom.substanceSelect.value = state.substanceKey;
+        dom.massSlider.value = state.mass;
+        dom.powerSlider.value = state.power;
+        resetSimulation();
+      }
+
+      // -------------------------------------------------------------------------
+      // 9. ÇİZİM FONKSİYONLARI - LABORATUVAR ALANI (CANVAS)
+      // -------------------------------------------------------------------------
+      function drawSimCanvas() {
+        const canvas = dom.simCanvas;
+        const ctx = simCtx;
+        const w = canvas.width;
+        const h = canvas.height;
+        const sub = getActiveSubstance();
+        const alpha = getTransformedFraction();
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Arka Plan Işık Efekti
+        const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, w / 2);
+        bgGrad.addColorStop(0, "#131b2e");
+        bgGrad.addColorStop(1, "#070b14");
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Laboratuvar Masası (Lab Bench)
+        const benchY = h - 65;
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(40, benchY, w - 80, 20);
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(30, benchY + 18, w - 60, 6);
+
+        // Masa Ayakları
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(60, benchY + 24, 20, 45);
+        ctx.fillRect(w - 80, benchY + 24, 20, 45);
+
+        // Tripod ve Destek Standı
+        const centerX = w / 2 - 20;
+        const tripodTopY = benchY - 110;
+
+        // Tripod Ayakları
+        ctx.strokeStyle = "#64748b";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        // Sol ayak
+        ctx.moveTo(centerX - 60, benchY);
+        ctx.lineTo(centerX - 45, tripodTopY);
+        // Sağ ayak
+        ctx.moveTo(centerX + 60, benchY);
+        ctx.lineTo(centerX + 45, tripodTopY);
+        // Arka ayak
+        ctx.moveTo(centerX, benchY);
+        ctx.lineTo(centerX, tripodTopY);
+        ctx.stroke();
+
+        // Tripod Üst Halkası / Tel Izgara (Wire Gauze)
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(centerX - 70, tripodTopY - 4, 140, 8);
+        ctx.fillStyle = "#94a3b8"; // Seramik merkez
+        ctx.fillRect(centerX - 40, tripodTopY - 5, 80, 10);
+
+        // İspirt Ocağı / Isıtıcı (Burner)
+        const burnerY = benchY - 10;
+        ctx.fillStyle = "#334155";
+        ctx.beginPath();
+        ctx.roundRect(centerX - 35, burnerY - 30, 70, 30, 4);
+        ctx.fill();
+        ctx.fillStyle = "#64748b";
+        ctx.fillRect(centerX - 8, burnerY - 45, 16, 16); // Nozul borusu
+
+        // ALEV ÇİZİMİ (Isıtıcı Aktifse)
+        if (state.isRunning && !state.isCompleted) {
+          ctx.save();
+          // Isıtıcı Gücüne Göre Alev Boyutu
+          const flameScale = 0.6 + (state.power / 1000) * 0.7;
+          const flameBaseY = burnerY - 45;
+
+          // Parçacıklı dinamik alev
+          state.flameParticles.forEach(p => {
+            p.y += p.speedY * (state.power / 500);
+            if (p.y > 55) {
+              p.y = 0;
+              p.x = (Math.random() - 0.5) * 40;
+            }
+            const py = flameBaseY - p.y * flameScale;
+            const px = centerX + p.x * (1 - p.y / 60);
+            const size = p.size * (1 - p.y / 60) * flameScale;
+
+            if (size > 1) {
+              const fGrad = ctx.createRadialGradient(px, py, 0, px, py, size);
+              fGrad.addColorStop(0, `hsla(${p.hue + 25}, 100%, 75%, 0.9)`);
+              fGrad.addColorStop(0.5, `hsla(${p.hue}, 100%, 55%, 0.6)`);
+              fGrad.addColorStop(1, "rgba(249, 115, 22, 0)");
+              ctx.fillStyle = fGrad;
+              ctx.beginPath();
+              ctx.arc(px, py, size, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+
+          // Alev Mavi İç Çekirdeği
+          const coreGrad = ctx.createLinearGradient(centerX, flameBaseY, centerX, flameBaseY - 30 * flameScale);
+          coreGrad.addColorStop(0, "rgba(56, 189, 248, 0.85)");
+          coreGrad.addColorStop(1, "rgba(34, 211, 238, 0)");
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.ellipse(centerX, flameBaseY - 12 * flameScale, 10, 16 * flameScale, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+
+        // KAP VE MADDE ÇİZİMİ (Container & Substance)
+        const containerW = 120;
+        const containerH = 140;
+        const containerX = centerX - containerW / 2;
+        const containerBottomY = tripodTopY - 5;
+        const containerTopY = containerBottomY - containerH;
+
+        if (sub.containerType === "beaker") {
+          // ================= BEHERGLAS (Cam Beher) =================
+          // Cam Arka Yüzeyi
+          ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+          ctx.fillRect(containerX, containerTopY, containerW, containerH);
+
+          // MADDE DURUMU ÇİZİMİ
+          if (sub.id === "ice") {
+            // BUZ -> SU (ERİME)
+            // Eriyen su seviyesi tabandan yükselir
+            const maxLiquidH = (state.mass / 500) * 80 + 20;
+            const currentLiquidH = maxLiquidH * alpha;
+
+            if (currentLiquidH > 2) {
+              ctx.fillStyle = "rgba(2, 132, 199, 0.55)";
+              ctx.fillRect(containerX + 4, containerBottomY - currentLiquidH, containerW - 8, currentLiquidH);
+            }
+
+            // Kalan buz küpleri küçülür ve batar/yüzer
+            const remainingRatio = 1 - alpha;
+            if (remainingRatio > 0.02) {
+              const cubeCount = 5;
+              const cubeBaseSize = 22 * Math.cbrt(state.mass / 100);
+              const currentCubeSize = cubeBaseSize * Math.cbrt(remainingRatio);
+
+              ctx.save();
+              ctx.fillStyle = "rgba(186, 230, 253, 0.75)";
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+              ctx.lineWidth = 1.5;
+
+              const positions = [
+                { ox: 20, oy: 15, rot: 0.1 },
+                { ox: 50, oy: 22, rot: -0.15 },
+                { ox: 80, oy: 18, rot: 0.05 },
+                { ox: 35, oy: 40, rot: -0.2 },
+                { ox: 65, oy: 42, rot: 0.25 }
+              ];
+
+              positions.forEach(pos => {
+                const cx = containerX + pos.ox;
+                const cy = containerBottomY - currentLiquidH - pos.oy + 10;
+                if (cy > containerTopY + 20) {
+                  ctx.save();
+                  ctx.translate(cx, cy);
+                  ctx.rotate(pos.rot);
+                  ctx.beginPath();
+                  ctx.roundRect(-currentCubeSize / 2, -currentCubeSize / 2, currentCubeSize, currentCubeSize, 3);
+                  ctx.fill();
+                  ctx.stroke();
+                  ctx.restore();
+                }
+              });
+              ctx.restore();
+            }
+
+          } else if (sub.id === "water") {
+            // SU -> BUHAR (BUHARLAŞMA)
+            // Kalan su seviyesi azalır
+            const maxLiquidH = (state.mass / 500) * 80 + 35;
+            const currentLiquidH = maxLiquidH * (1 - alpha);
+
+            if (currentLiquidH > 2) {
+              // Kaynayan su kütlesi
+              ctx.fillStyle = "rgba(2, 132, 199, 0.65)";
+              ctx.fillRect(containerX + 4, containerBottomY - currentLiquidH, containerW - 8, currentLiquidH);
+
+              // Kaynama kabarcıkları (ısıtıcı çalışırken)
+              if (state.isRunning && !state.isCompleted) {
+                ctx.fillStyle = "rgba(224, 242, 254, 0.8)";
+                state.bubbleParticles.forEach(b => {
+                  b.y -= b.speedY * (state.power / 300);
+                  if (b.y < 0) {
+                    b.y = currentLiquidH - 4;
+                    b.x = (Math.random() - 0.5) * (containerW - 20);
+                  }
+                  const bx = centerX + b.x;
+                  const by = containerBottomY - b.y;
+                  if (by > containerBottomY - currentLiquidH && by < containerBottomY) {
+                    ctx.beginPath();
+                    ctx.arc(bx, by, b.r, 0, Math.PI * 2);
+                    ctx.fill();
+                  }
+                });
+              }
+            }
+
+            // Buharlaşma bulutları (havaya yükselen buhar)
+            if (state.isRunning && !state.isCompleted && alpha > 0.01) {
+              ctx.save();
+              state.steamParticles.forEach(sp => {
+                sp.y += sp.speedY;
+                if (sp.y > 110) {
+                  sp.y = 0;
+                  sp.x = (Math.random() - 0.5) * (containerW - 20);
+                }
+                const sy = containerTopY - sp.y;
+                const sx = centerX + sp.x * (1 + sp.y / 60);
+                const size = sp.size * (1 + sp.y / 50);
+
+                const steamGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, size);
+                steamGrad.addColorStop(0, `rgba(240, 249, 255, ${0.45 * (1 - sp.y / 110)})`);
+                steamGrad.addColorStop(1, "rgba(240, 249, 255, 0)");
+                ctx.fillStyle = steamGrad;
+                ctx.beginPath();
+                ctx.arc(sx, sy, size, 0, Math.PI * 2);
+                ctx.fill();
+              });
+              ctx.restore();
+            }
+          }
+
+          // Cam Beher Çizgileri & Derecelendirme (Graduations)
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          // Sol kenar, taban, sağ kenar, gaga
+          ctx.moveTo(containerX - 6, containerTopY);
+          ctx.lineTo(containerX, containerTopY + 8);
+          ctx.lineTo(containerX, containerBottomY);
+          ctx.lineTo(containerX + containerW, containerBottomY);
+          ctx.lineTo(containerX + containerW, containerTopY);
+          ctx.stroke();
+
+          // Beher derecelendirme çizgileri
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+          ctx.lineWidth = 1;
+          for (let i = 1; i <= 4; i++) {
+            const gy = containerBottomY - i * 25;
+            ctx.beginPath();
+            ctx.moveTo(containerX + 5, gy);
+            ctx.lineTo(containerX + 22, gy);
+            ctx.stroke();
+          }
+
+        } else {
+          // ================= POTA / KROZE (Crucible for Metals) =================
+          const crucibleW = 110;
+          const crucibleH = 90;
+          const crX = centerX - crucibleW / 2;
+          const crBottomY = containerBottomY;
+          const crTopY = crBottomY - crucibleH;
+
+          // Pota Gövdesi (Isıya Dayanıklı Seramik)
+          ctx.fillStyle = "#334155";
+          ctx.strokeStyle = "#64748b";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(crX - 5, crTopY);
+          ctx.lineTo(crX + 15, crBottomY);
+          ctx.lineTo(crX + crucibleW - 15, crBottomY);
+          ctx.lineTo(crX + crucibleW + 5, crTopY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Metalik Madde (Kurşun / Bakır)
+          const meltLiquidH = (crucibleH - 20) * alpha;
+
+          // Sıvı Metal Havuzu (Eriyen Kısım)
+          if (meltLiquidH > 2) {
+            ctx.fillStyle = sub.id === "copper" ? "rgba(234, 88, 12, 0.85)" : "rgba(148, 163, 184, 0.85)";
+            if (sub.id === "copper") {
+              ctx.shadowColor = "#f97316";
+              ctx.shadowBlur = 15;
+            }
+            ctx.beginPath();
+            ctx.moveTo(crX + 18, crBottomY - 4);
+            ctx.lineTo(crX + crucibleW - 18, crBottomY - 4);
+            ctx.lineTo(crX + crucibleW - 12, crBottomY - meltLiquidH);
+            ctx.lineTo(crX + 12, crBottomY - meltLiquidH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          // Katı Metal Külçesi / Parçaları (Kalan Kısım)
+          const remainingFrac = 1 - alpha;
+          if (remainingFrac > 0.05) {
+            const solidW = (crucibleW - 40) * Math.cbrt(remainingFrac);
+            const solidH = 30 * Math.cbrt(remainingFrac);
+            const solidX = centerX - solidW / 2;
+            const solidY = crBottomY - meltLiquidH - solidH + 4;
+
+            ctx.fillStyle = sub.id === "copper" ? "#b45309" : "#475569";
+            ctx.strokeStyle = sub.id === "copper" ? "#ea580c" : "#94a3b8";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(solidX, solidY, solidW, solidH, 4);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+
+        // ================= TERMOMETRE VE RETORT STANDI =================
+        const standX = centerX + 110;
+        // Retort Standı Düşey Çubuğu
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(standX, benchY - 260, 10, 260);
+        ctx.fillRect(standX - 25, benchY - 8, 60, 8); // Tabanı
+
+        // Destek Kıskacı (Clamp)
+        const clampY = containerTopY - 20;
+        ctx.fillStyle = "#64748b";
+        ctx.fillRect(centerX + 15, clampY, standX - (centerX + 15), 6);
+        ctx.fillRect(centerX + 10, clampY - 6, 12, 18);
+
+        // Termometre Cam Gövdesi
+        const thermoX = centerX + 16;
+        const thermoTopY = containerTopY - 60;
+        const thermoBottomY = containerBottomY - 20;
+        const thermoW = 8;
+
+        // Dış Cam Tüp
+        ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(thermoX - thermoW / 2, thermoTopY, thermoW, thermoBottomY - thermoTopY, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Termometre Haznesi (Bulb)
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(thermoX, thermoBottomY, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Kırmızı Cıva / Sıvı Sütunu (Sabit Sıcaklık Seviyesinde)
+        // Sıcaklık sabit olduğu için termometre sıvı sütunu kesinlikle oynamaz!
+        const maxT = 1200;
+        const liquidColH = Math.max(15, ((sub.T + 20) / maxT) * (thermoBottomY - thermoTopY - 30));
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(thermoX - 2, thermoBottomY - liquidColH, 4, liquidColH);
+
+        // Termometre Yanında Sabit Sıcaklık Bilgi Etiketi
+        ctx.save();
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 13px -apple-system, sans-serif";
+        ctx.fillText(`T = ${sub.T} °C (Sabit)`, thermoX + 16, thermoBottomY - liquidColH + 4);
+        ctx.restore();
+      }
+
+      // -------------------------------------------------------------------------
+      // 10. ÇİZİM FONKSİYONLARI - CANLI GRAFİK (GRAPH CANVAS)
+      // -------------------------------------------------------------------------
+      function drawGraphCanvas() {
+        const canvas = dom.graphCanvas;
+        const ctx = graphCtx;
+        const w = canvas.width;
+        const h = canvas.height;
+        const sub = getActiveSubstance();
+        const reqQkJ = getRequiredHeatKJ();
+        const totalReqTime = getRequiredHeatJoules() / state.power;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const padLeft = 70;
+        const padRight = 30;
+        const padTop = 25;
+        const padBottom = 35;
+        const plotW = w - padLeft - padRight;
+        const plotH = h - padTop - padBottom;
+
+        // Izgara Arka Planı
+        ctx.fillStyle = "#090d16";
+        ctx.fillRect(padLeft, padTop, plotW, plotH);
+
+        // Eksen Çizgileri
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padLeft, padTop);
+        ctx.lineTo(padLeft, padTop + plotH);
+        ctx.lineTo(padLeft + plotW, padTop + plotH);
+        ctx.stroke();
+
+        // Maksimum Eksen Ölçekleri
+        const maxTimeScale = Math.max(10, Math.ceil(totalReqTime * 1.15));
+        const maxYVal = state.graphMode === "Q" ? Math.max(1, reqQkJ * 1.15) : Math.max(10, state.mass * 1.15);
+
+        // Yatay Izgara ve Y Eksen Etiketleri
+        ctx.fillStyle = "#64748b";
+        ctx.font = "11px monospace";
+        ctx.textAlign = "right";
+        for (let i = 0; i <= 4; i++) {
+          const yVal = (maxYVal * i) / 4;
+          const yPos = padTop + plotH - (plotH * i) / 4;
+
+          ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+          ctx.beginPath();
+          ctx.moveTo(padLeft, yPos);
+          ctx.lineTo(padLeft + plotW, yPos);
+          ctx.stroke();
+
+          ctx.fillText(yVal.toFixed(1), padLeft - 8, yPos + 4);
+        }
+
+        // Düşey Izgara ve Zaman (X) Etiketleri
+        ctx.textAlign = "center";
+        for (let i = 0; i <= 5; i++) {
+          const tVal = (maxTimeScale * i) / 5;
+          const xPos = padLeft + (plotW * i) / 5;
+
+          ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+          ctx.beginPath();
+          ctx.moveTo(xPos, padTop);
+          ctx.lineTo(xPos, padTop + plotH);
+          ctx.stroke();
+
+          ctx.fillText(`${tVal.toFixed(0)}s`, xPos, padTop + plotH + 18);
+        }
+
+        // Hedef Eşik Çizgisi (Dashed Threshold)
+        const targetYPos = padTop + plotH - (plotH * (state.graphMode === "Q" ? reqQkJ : state.mass)) / maxYVal;
+        ctx.strokeStyle = "#f59e0b";
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(padLeft, targetYPos);
+        ctx.lineTo(padLeft + plotW, targetYPos);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Eşik Etiketi
+        ctx.fillStyle = "#f59e0b";
+        ctx.textAlign = "left";
+        ctx.font = "bold 11px sans-serif";
+        const targetLabel = state.graphMode === "Q" 
+          ? `Hedef Q_toplam = ${reqQkJ.toFixed(2)} kJ (m · L)` 
+          : `Toplam Kütle m = ${state.mass} g`;
+        ctx.fillText(targetLabel, padLeft + 10, targetYPos - 6);
+
+        // Canlı Eğri Çizimi (Plot History)
+        if (state.history.length > 1) {
+          ctx.strokeStyle = state.graphMode === "Q" ? "#38bdf8" : "#a855f7";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+
+          state.history.forEach((pt, idx) => {
+            const x = padLeft + (pt.t / maxTimeScale) * plotW;
+            const val = state.graphMode === "Q" ? pt.Q / 1000 : pt.mTrans;
+            const y = padTop + plotH - (val / maxYVal) * plotH;
+
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          // Son Nokta İşareti
+          const lastPt = state.history[state.history.length - 1];
+          const lastX = padLeft + (lastPt.t / maxTimeScale) * plotW;
+          const lastVal = state.graphMode === "Q" ? lastPt.Q / 1000 : lastPt.mTrans;
+          const lastY = padTop + plotH - (lastVal / maxYVal) * plotH;
+
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Eksen İsimleri
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Zaman t (saniye)", padLeft + plotW / 2, h - 6);
+
+        ctx.save();
+        ctx.translate(18, padTop + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        const yAxisTitle = state.graphMode === "Q" ? "Aktarılan Isı Q (kJ)" : "Dönüşen Kütle m_dönüşen (g)";
+        ctx.fillText(yAxisTitle, 0, 0);
+        ctx.restore();
+      }
+
+      // -------------------------------------------------------------------------
+      // 11. ANİMASYON VE FİZİK ÇEVRİMİ (ANIMATION LOOP)
+      // -------------------------------------------------------------------------
+      let lastTimestamp = performance.now();
+
+      function animationTick(timestamp) {
+        const deltaMs = Math.min(100, timestamp - lastTimestamp);
+        lastTimestamp = timestamp;
+        const dtSec = (deltaMs / 1000) * state.timeSpeed;
+
+        if (state.isRunning && !state.isCompleted) {
+          const reqQ = getRequiredHeatJoules();
+          const addedQ = state.power * dtSec;
+          state.simTime += dtSec;
+          state.currentQ = Math.min(reqQ, state.currentQ + addedQ);
+
+          // Grafiğe veri ekle
+          state.history.push({
+            t: state.simTime,
+            Q: state.currentQ,
+            mTrans: getTransformedMass()
+          });
+
+          // Tamamlanma Kontrolü (Q = m · L ulaşıldı mı?)
+          if (state.currentQ >= reqQ) {
+            state.currentQ = reqQ;
+            state.isCompleted = true;
+            state.isRunning = false;
+          }
+
+          updateUI();
+        }
+
+        drawSimCanvas();
+        drawGraphCanvas();
+
+        requestAnimationFrame(animationTick);
+      }
+
+      // -------------------------------------------------------------------------
+      // 12. ETKİLEŞİM VE DİNLENEN OLAYLAR (EVENT LISTENERS)
+      // -------------------------------------------------------------------------
+      
+      // Madde Değişimi
+      dom.substanceSelect.addEventListener("change", (e) => {
+        state.substanceKey = e.target.value;
+        resetSimulation();
+      });
+
+      // Kütle Değişimi
+      dom.massSlider.addEventListener("input", (e) => {
+        state.mass = parseInt(e.target.value, 10);
+        resetSimulation();
+      });
+
+      // Isıtıcı Gücü Değişimi
+      dom.powerSlider.addEventListener("input", (e) => {
+        state.power = parseInt(e.target.value, 10);
+        updateUI();
+      });
+
+      // Butonlar
+      dom.btnStart.addEventListener("click", startSimulation);
+      dom.btnPause.addEventListener("click", pauseSimulation);
+      dom.btnReset.addEventListener("click", resetSimulation);
+
+      // Simülasyon Hızı Butonları
+      dom.speedBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          dom.speedBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          state.timeSpeed = parseFloat(btn.getAttribute("data-speed"));
+        });
+      });
+
+      // Hızlı Test Durumları
+      dom.testBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          loadTestCase(btn.getAttribute("data-tc"));
+        });
+      });
+
+      // Grafik Sekmeleri
+      dom.tabGraphQ.addEventListener("click", () => {
+        state.graphMode = "Q";
+        dom.tabGraphQ.classList.add("active");
+        dom.tabGraphM.classList.remove("active");
+        drawGraphCanvas();
+      });
+
+      dom.tabGraphM.addEventListener("click", () => {
+        state.graphMode = "m";
+        dom.tabGraphM.classList.add("active");
+        dom.tabGraphQ.classList.remove("active");
+        drawGraphCanvas();
+      });
+
+      // AKILLI TAHTA MODU GEÇİŞİ (Smart Board Toggle)
+      dom.btnToggleMode.addEventListener("click", () => {
+        document.body.classList.toggle("smart-board");
+        const isSmartBoard = document.body.classList.contains("smart-board");
+        dom.modeBtnText.textContent = isSmartBoard ? "📺 Akıllı Tahta Modu" : "💻 Laptop Modu";
+      });
+
+      // TAM EKRAN MODU
+      dom.btnFullscreen.addEventListener("click", () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+          dom.btnFullscreen.innerHTML = "<span>⛶</span> Ekrandan Çık";
+        } else {
+          document.exitFullscreen().catch(() => {});
+          dom.btnFullscreen.innerHTML = "<span>⛶</span> Tam Ekran";
+        }
+      });
+
+      // YARDIM MODALI
+      dom.btnHelp.addEventListener("click", () => dom.helpModal.classList.add("open"));
+      dom.btnCloseHelp.addEventListener("click", () => dom.helpModal.classList.remove("open"));
+      dom.helpModal.addEventListener("click", (e) => {
+        if (e.target === dom.helpModal) dom.helpModal.classList.remove("open");
+      });
+
+      // -------------------------------------------------------------------------
+      // 13. BAŞLANGIÇ ÇAĞRISI (INIT)
+      // -------------------------------------------------------------------------
+      resetSimulation();
+      requestAnimationFrame(animationTick);
+
+    })();
+  </script>
+</body>
+</html>
